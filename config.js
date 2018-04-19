@@ -5,7 +5,7 @@ var config = {
   "use_dev": true,
   "relay_port": 7500,
   "relay_secure_port": 4443,
-  "relay_server": "127.0.0.1",
+  "relay_server": "127.0.0.1"
 }
 
 module.exports = {
