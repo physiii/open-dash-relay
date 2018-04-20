@@ -31,6 +31,7 @@ function start(server) {
         console.log(TAG, "Members found. Sending Command");
         return send_command(data);
       }).catch(function(error){
+        // If member or user does not exist or are not linked. Error.
         console.log(TAG, "Error:", error);
         socket.emit('command fail', {error:error})
       })
@@ -82,20 +83,13 @@ function check_member(data){
     console.log(TAG, "Recieved command from client", );
     var device = data.device
     var user_token = data.token
-    var command = data.command
+    var member_found = false;
 
-    // Check to see if user and group for user exists
-    var user_object = device_objects[find_index(device_objects, 'token', user_token)];
-    if (!user_object) reject(" User not found");
-    var user_id = user_object.mac;
-    console.log(TAG,"Found user id: " + user_id);
-
-    // Check for group associated with User
+    // Revert User_Token back into user Mac and grab user group
+    var user_id = device_objects[find_index(device_objects, 'token', user_token)].mac;
     var group_object = groups[find_index(groups, 'group_id',user_id)];
-    if (!group_object) reject(" Group not found: " + user_id);
 
     // Check User Group for Device association.
-    var member_found = false;
     for (var i = 0; i < group_object.members.length; i++)
       if (group_object.members[i] == device) member_found = true;
     if (!member_found) reject(device + " is not a member of " + user_id);
