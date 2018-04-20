@@ -26,18 +26,18 @@ function start(server) {
   io.on('connection', function (socket) {
     console.info(TAG,"Client connected");
 
-    socket.on ('command', function (data) {
-      command(data, socket);
-
-      // If all true pass Check device Object Index command to device requested from client.
-      var device_object = device_objects[find_index(device_objects, 'mac', data.device)];
-      if (device_object)
-        if (device_object.socket)
-          device_object.socket.emit('command', {command:data.command});
+    socket.on ('send command', function (data) {
+      check_member(data).then(function(data){
+        console.log(TAG, "Members found. Sending Command");
+        return send_command(data);
+      }).catch(function(error){
+        console.log(TAG, "Error:", error);
+        socket.emit('command fail', {error:error})
+      })
     })
 
     socket.on ('command result', function(data){
-      io.sockets.emit('command result', data);
+      socket.broadcast.emit('command result', data);
     })
 
     socket.on('get token', function(data) {
@@ -69,28 +69,38 @@ function start(server) {
 
 //-----------------End of Dash Socket communications-------------------------//
 
-function command(data, socket){
-  console.log(TAG, "Recieved command from client", );
-  var device = data.device
-  var user_token = data.token
-  var command = data.command
+function send_command(data){
+  // If all true pass Check device Object Index command to device requested from client.
+  var device_object = device_objects[find_index(device_objects, 'mac', data.device)];
+  if (device_object)
+    if (device_object.socket)
+      device_object.socket.emit('get command', {command:data.command});
+}
 
-  // Check to see if user and group for user exists
-  var user_object = device_objects[find_index(device_objects, 'token', user_token)];
-  if (!user_object) return console.log(TAG,"User not found");
-  var user_id = user_object.mac;
-  console.log(TAG,"Found user id: " + user_id);
+function check_member(data){
+  return new Promise(function (resolve, reject){
+    console.log(TAG, "Recieved command from client", );
+    var device = data.device
+    var user_token = data.token
+    var command = data.command
 
-  // Check for group associated with User
-  var group_object = groups[find_index(groups, 'group_id',user_id)];
-  if (!group_object) return console.log("group not found: " + user_id);
+    // Check to see if user and group for user exists
+    var user_object = device_objects[find_index(device_objects, 'token', user_token)];
+    if (!user_object) reject(" User not found");
+    var user_id = user_object.mac;
+    console.log(TAG,"Found user id: " + user_id);
 
-  // Check User Group for Device association.
-  var member_found = false;
-  for (var i = 0; i < group_object.members.length; i++)
-    if (group_object.members[i] == device) member_found = true;
-  if (!member_found) return console.log(TAG,device + " is not a member of " + user_id);
-  return data.command, data.device;
+    // Check for group associated with User
+    var group_object = groups[find_index(groups, 'group_id',user_id)];
+    if (!group_object) reject(" Group not found: " + user_id);
+
+    // Check User Group for Device association.
+    var member_found = false;
+    for (var i = 0; i < group_object.members.length; i++)
+      if (group_object.members[i] == device) member_found = true;
+    if (!member_found) reject(device + " is not a member of " + user_id);
+    resolve(data);
+  })
 }
 
 function create_token(data, socket){
