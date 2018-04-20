@@ -86,7 +86,7 @@ function check_member(data){
     var member_found = false;
 
     // Revert User_Token back into user Mac and grab user group
-    var user_id = device_objects[find_index(device_objects, 'token', user_token)].mac;
+    var user_id = device_objects[find_index(device_objects, 'token', user_token)].mac;    
     var group_object = groups[find_index(groups, 'group_id',user_id)];
 
     // Check User Group for Device association.
@@ -168,8 +168,8 @@ function add_device(data, socket){
   console.log(TAG, 'added device', groups);
 }
 
-function list_devices () {
-  console.log("device list: ",devices)
+function list() {
+  console.log("device list: ")
 }
 
 function find_index(array, key, value) {
