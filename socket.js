@@ -38,7 +38,8 @@ function start(server) {
     })
 
     socket.on ('command result', function(data){
-      socket.broadcast.emit('command result', data);
+      console.log("Recieved command results. Sending to: " + data.req_socket);
+      io.to(data.req_socket).emit('command result', data);
     })
 
     socket.on('get token', function(data) {
@@ -48,17 +49,19 @@ function start(server) {
     })
 
     socket.on('add device', function(data){
-      add_device(data, socket);
-      io.sockets.emit('add device', {result: "Completed link"});
+      add_device(data);
+      socket.emit('add device', {result: "Completed link"});
     })
 
-    socket.on('list devices', function(data){
-      var username = data.mac;
-      var token = data.token;
-      console.log(TAG,"Recieved device list request from "+username);
+    socket.on('connected devices', function(data){
+      list_devices(data).then(function(data){
+        console.log(TAG,"Sending device list to ", data.mac);
+        socket.emit('connected devices', data)
+      }).catch(function(data){
+        return console.log("Error: Pulling devices failed. ");
+      })
 
     })
-
 
     socket.on('disconnect', function () {
       console.info(TAG,"Client disconnected");
@@ -73,9 +76,10 @@ function start(server) {
 function send_command(data){
   // If all true pass Check device Object Index command to device requested from client.
   var device_object = device_objects[find_index(device_objects, 'mac', data.device)];
+  var req_socket = device_objects[find_index(device_objects, 'token', data.token)].socket.id;
   if (device_object)
     if (device_object.socket)
-      device_object.socket.emit('get command', {command:data.command});
+      device_object.socket.emit('get command', {command:data.command, req_socket:req_socket});
 }
 
 function check_member(data){
@@ -86,7 +90,7 @@ function check_member(data){
     var member_found = false;
 
     // Revert User_Token back into user Mac and grab user group
-    var user_id = device_objects[find_index(device_objects, 'token', user_token)].mac;    
+    var user_id = device_objects[find_index(device_objects, 'token', user_token)].mac;
     var group_object = groups[find_index(groups, 'group_id',user_id)];
 
     // Check User Group for Device association.
@@ -168,8 +172,25 @@ function add_device(data, socket){
   console.log(TAG, 'added device', groups);
 }
 
-function list() {
-  console.log("device list: ")
+function list_devices(data, socket) {
+  return new Promise(function (resolve, reject){
+    var user_list = [];
+    var user_object = device_objects[find_index(device_objects, 'token', data.token)];
+    var user_id = user_object.mac
+    var user_socket = user_object.socket.id
+    console.log(TAG,"Recieved device list request from "+ user_id);
+    var user_group = groups[find_index(groups, 'group_id', user_id)];
+
+    for (i=0; i < user_group.members.length; i++){
+      if (user_group.members[i] == user_id) continue;
+      user_list.push(user_group.members[i])
+    }
+
+    data.devices = user_list
+    data.socket = user_socket
+    data.mac = user_id
+    resolve(data);
+  })
 }
 
 function find_index(array, key, value) {
