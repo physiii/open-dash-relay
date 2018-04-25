@@ -15,7 +15,7 @@ module.exports ={
 get_token()
 function get_token(){
   console.log(TAG,"Sending user token creation request to relay");
-  relay.emit('get token', {mac:"Relay Client2"});
+  relay.emit('get token', {mac:"Relay Client"});
 };
 
 //---------End Initialize. Start Socket Calls---------//
